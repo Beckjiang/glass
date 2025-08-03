@@ -6,13 +6,16 @@ const { getProviderForModel } = require('../factory.js');
 
 
 class OpenAIProvider {
-    static async validateApiKey(key) {
+    static async validateApiKey(key, baseUrl = null) {
         if (!key || typeof key !== 'string' || !key.startsWith('sk-')) {
             return { success: false, error: 'Invalid OpenAI API key format.' };
         }
 
+        // Use custom base URL if provided, otherwise use default
+        const validationUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/v1/models` : 'https://api.openai.com/v1/models';
+        
         try {
-            const response = await fetch('https://api.openai.com/v1/models', {
+            const response = await fetch(validationUrl, {
                 headers: { 'Authorization': `Bearer ${key}` }
             });
 
@@ -35,18 +38,19 @@ class OpenAIProvider {
  * Creates an OpenAI STT session
  * @param {object} opts - Configuration options
  * @param {string} opts.apiKey - OpenAI API key
+ * @param {string} [opts.baseUrl=null] - Custom base URL
  * @param {string} [opts.language='en'] - Language code
  * @param {object} [opts.callbacks] - Event callbacks
  * @param {boolean} [opts.usePortkey=false] - Whether to use Portkey
  * @param {string} [opts.portkeyVirtualKey] - Portkey virtual key
  * @returns {Promise<object>} STT session
  */
-async function createSTT({ apiKey, language = 'en', callbacks = {}, usePortkey = false, portkeyVirtualKey, ...config }) {
+async function createSTT({ apiKey, baseUrl = null, language = 'en', callbacks = {}, usePortkey = false, portkeyVirtualKey, ...config }) {
   const keyType = usePortkey ? 'vKey' : 'apiKey';
   const key = usePortkey ? (portkeyVirtualKey || apiKey) : apiKey;
 
   const wsUrl = keyType === 'apiKey'
-    ? 'wss://api.openai.com/v1/realtime?intent=transcription'
+    ? `${baseUrl ? baseUrl.replace(/\/$/, '').replace('https://', 'wss://').replace('http://', 'ws://') : 'wss://api.openai.com'}/v1/realtime?intent=transcription`
     : 'wss://api.portkey.ai/v1/realtime?intent=transcription';
 
   const headers = keyType === 'apiKey'
@@ -158,6 +162,7 @@ async function createSTT({ apiKey, language = 'en', callbacks = {}, usePortkey =
  * Creates an OpenAI LLM instance
  * @param {object} opts - Configuration options
  * @param {string} opts.apiKey - OpenAI API key
+ * @param {string} [opts.baseUrl=null] - Custom base URL
  * @param {string} [opts.model='gpt-4.1'] - Model name
  * @param {number} [opts.temperature=0.7] - Temperature
  * @param {number} [opts.maxTokens=2048] - Max tokens
@@ -165,8 +170,11 @@ async function createSTT({ apiKey, language = 'en', callbacks = {}, usePortkey =
  * @param {string} [opts.portkeyVirtualKey] - Portkey virtual key
  * @returns {object} LLM instance
  */
-function createLLM({ apiKey, model = 'gpt-4.1', temperature = 0.7, maxTokens = 2048, usePortkey = false, portkeyVirtualKey, ...config }) {
-  const client = new OpenAI({ apiKey });
+function createLLM({ apiKey, baseUrl = null, model = 'gpt-4.1', temperature = 0.7, maxTokens = 2048, usePortkey = false, portkeyVirtualKey, ...config }) {
+  const client = new OpenAI({ 
+    apiKey,
+    baseURL: baseUrl || undefined 
+  });
   
   const callApi = async (messages) => {
     if (!usePortkey) {
@@ -254,6 +262,7 @@ function createLLM({ apiKey, model = 'gpt-4.1', temperature = 0.7, maxTokens = 2
  * Creates an OpenAI streaming LLM instance
  * @param {object} opts - Configuration options
  * @param {string} opts.apiKey - OpenAI API key
+ * @param {string} [opts.baseUrl=null] - Custom base URL
  * @param {string} [opts.model='gpt-4.1'] - Model name
  * @param {number} [opts.temperature=0.7] - Temperature
  * @param {number} [opts.maxTokens=2048] - Max tokens
@@ -261,12 +270,12 @@ function createLLM({ apiKey, model = 'gpt-4.1', temperature = 0.7, maxTokens = 2
  * @param {string} [opts.portkeyVirtualKey] - Portkey virtual key
  * @returns {object} Streaming LLM instance
  */
-function createStreamingLLM({ apiKey, model = 'gpt-4.1', temperature = 0.7, maxTokens = 2048, usePortkey = false, portkeyVirtualKey, ...config }) {
+function createStreamingLLM({ apiKey, baseUrl = null, model = 'gpt-4.1', temperature = 0.7, maxTokens = 2048, usePortkey = false, portkeyVirtualKey, ...config }) {
   return {
     streamChat: async (messages) => {
       const fetchUrl = usePortkey 
         ? 'https://api.portkey.ai/v1/chat/completions'
-        : 'https://api.openai.com/v1/chat/completions';
+        : `${baseUrl ? baseUrl.replace(/\/$/, '') : 'https://api.openai.com'}/v1/chat/completions`;
       
       const headers = usePortkey
         ? {
@@ -289,6 +298,7 @@ function createStreamingLLM({ apiKey, model = 'gpt-4.1', temperature = 0.7, maxT
           max_tokens: maxTokens,
           stream: true,
         }),
+        timeout: 60000, // 60 second timeout for custom base URLs
       });
 
       if (!response.ok) {

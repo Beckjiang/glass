@@ -119,6 +119,12 @@ module.exports = {
     ipcMain.handle('model:are-providers-configured', async () => await modelStateService.areProvidersConfigured());
     ipcMain.handle('model:get-provider-config', () => modelStateService.getProviderConfig());
     ipcMain.handle('model:re-initialize-state', async () => await modelStateService.initialize());
+    
+    // Base URL management
+    ipcMain.handle('model:set-base-url', async (e, { provider, baseUrl }) => await modelStateService.setBaseUrl(provider, baseUrl));
+    ipcMain.handle('model:get-base-url', async (e, { provider }) => await modelStateService.getBaseUrl(provider));
+    ipcMain.handle('model:remove-base-url', async (e, { provider }) => await modelStateService.setBaseUrl(provider, null));
+    ipcMain.handle('model:get-all-provider-settings', async () => await modelStateService.getAllProviderSettings());
 
     // LocalAIManager 이벤트를 모든 윈도우에 브로드캐스트
     localAIManager.on('install-progress', (service, data) => {

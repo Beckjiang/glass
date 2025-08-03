@@ -355,12 +355,11 @@ export class PermissionHeader extends LitElement {
             const isKeychainRequired = this.userMode === 'firebase';
             const keychainOk = !isKeychainRequired || this.keychainGranted === 'granted';
             
-            // if all permissions granted == automatically continue
+            // if required permissions granted == automatically continue
             if (this.microphoneGranted === 'granted' && 
-                this.screenGranted === 'granted' && 
                 keychainOk && 
                 this.continueCallback) {
-                console.log('[PermissionHeader] All permissions granted, proceeding automatically');
+                console.log('[PermissionHeader] Required permissions granted, proceeding automatically');
                 setTimeout(() => this.handleContinue(), 500);
             }
         } catch (error) {
@@ -453,8 +452,30 @@ export class PermissionHeader extends LitElement {
 
         if (this.continueCallback && 
             this.microphoneGranted === 'granted' && 
-            this.screenGranted === 'granted' && 
             keychainOk) {
+            // Mark permissions as completed
+            if (window.api && isKeychainRequired) {
+                try {
+                    await window.api.permissionHeader.markKeychainCompleted();
+                    console.log('[PermissionHeader] Marked keychain as completed');
+                } catch (error) {
+                    console.error('[PermissionHeader] Error marking keychain as completed:', error);
+                }
+            }
+            
+            this.continueCallback();
+        }
+    }
+
+    async handleSkipScreenRecording() {
+        const isKeychainRequired = this.userMode === 'firebase';
+        const keychainOk = !isKeychainRequired || this.keychainGranted === 'granted';
+
+        if (this.continueCallback && 
+            this.microphoneGranted === 'granted' && 
+            keychainOk) {
+            console.log('[PermissionHeader] Skipping screen recording permission');
+            
             // Mark permissions as completed
             if (window.api && isKeychainRequired) {
                 try {
@@ -480,7 +501,8 @@ export class PermissionHeader extends LitElement {
         const isKeychainRequired = this.userMode === 'firebase';
         const containerHeight = isKeychainRequired ? 280 : 220;
         const keychainOk = !isKeychainRequired || this.keychainGranted === 'granted';
-        const allGranted = this.microphoneGranted === 'granted' && this.screenGranted === 'granted' && keychainOk;
+        const requiredGranted = this.microphoneGranted === 'granted' && keychainOk;
+        const allGranted = requiredGranted && this.screenGranted === 'granted';
 
         return html`
             <div class="container" style="height: ${containerHeight}px">
@@ -493,7 +515,7 @@ export class PermissionHeader extends LitElement {
 
                 <div class="form-content ${allGranted ? 'all-granted' : ''}">
                     ${!allGranted ? html`
-                        <div class="subtitle">Grant access to microphone, screen recording${isKeychainRequired ? ' and keychain' : ''} to continue</div>
+                        <div class="subtitle">Grant access to microphone${isKeychainRequired ? ' and keychain' : ''} to continue. Screen recording is optional.</div>
                         
                         <div class="permission-status">
                             <div class="permission-item ${this.microphoneGranted === 'granted' ? 'granted' : ''}">
@@ -577,6 +599,19 @@ export class PermissionHeader extends LitElement {
                             Continue to Pickle Glass
                         </button>
                     `}
+                    <!-- Show skip button if only microphone is granted -->
+                    ${requiredGranted && this.screenGranted !== 'granted' ? html`
+                        <button 
+                            class="continue-button" 
+                            @click=${this.handleSkipScreenRecording}
+                            style="background: rgba(59, 130, 246, 0.8); margin-top: 8px;"
+                        >
+                            Skip Screen Recording
+                        </button>
+                        <div class="subtitle" style="margin-top: 8px; font-size: 10px;">
+                            Screen recording is optional. You can enable it later in settings.
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;

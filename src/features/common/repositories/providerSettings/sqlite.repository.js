@@ -36,10 +36,11 @@ function upsert(provider, settings) {
     
     // Use SQLite's UPSERT syntax (INSERT ... ON CONFLICT ... DO UPDATE)
     const stmt = db.prepare(`
-        INSERT INTO provider_settings (provider, api_key, selected_llm_model, selected_stt_model, is_active_llm, is_active_stt, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO provider_settings (provider, api_key, base_url, selected_llm_model, selected_stt_model, is_active_llm, is_active_stt, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(provider) DO UPDATE SET
             api_key = excluded.api_key,
+            base_url = excluded.base_url,
             selected_llm_model = excluded.selected_llm_model,
             selected_stt_model = excluded.selected_stt_model,
             -- is_active_llm and is_active_stt are NOT updated here
@@ -50,6 +51,7 @@ function upsert(provider, settings) {
     const result = stmt.run(
         provider,
         settings.api_key || null,
+        settings.base_url || null,
         settings.selected_llm_model || null,
         settings.selected_stt_model || null,
         0, // is_active_llm - always 0, use setActiveProvider to activate

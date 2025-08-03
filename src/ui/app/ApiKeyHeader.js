@@ -7,6 +7,8 @@ export class ApiKeyHeader extends LitElement {
         sttApiKey: { type: String },
         llmProvider: { type: String },
         sttProvider: { type: String },
+        llmBaseUrl: { type: String },
+        sttBaseUrl: { type: String },
         isLoading: { type: Boolean },
         errorMessage: { type: String },
         successMessage: { type: String },
@@ -312,6 +314,35 @@ export class ApiKeyHeader extends LitElement {
             flex-direction: column;
             gap: 4px;
             align-items: flex-start;
+        }
+        .base-url-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: flex-start;
+            margin-top: 4px;
+        }
+        .base-url-input {
+            -webkit-app-region: no-drag;
+            width: 240px;
+            padding: 8px 8px;
+            background: rgba(41.2, 41.2, 41.2, 0.8);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            color: white;
+            font-size: 10px;
+            text-overflow: ellipsis;
+            font-family: inherit;
+            line-height: inherit;
+        }
+        .base-url-input::placeholder {
+            color: #888;
+        }
+        .helper-text {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 9px;
+            width: 240px;
+            line-height: 1.2;
         }
         .inline-error-message {
             color: #ff7070;
@@ -1528,6 +1559,13 @@ export class ApiKeyHeader extends LitElement {
                     throw new Error('Please enter LLM API key');
                 }
 
+                // Save base URL first if provided
+                if (this.llmBaseUrl?.trim()) {
+                    await window.api.apiKeyHeader.saveBaseUrl(this.llmProvider, this.llmBaseUrl.trim());
+                } else {
+                    await window.api.apiKeyHeader.removeBaseUrl(this.llmProvider);
+                }
+
                 llmResult = await window.api.apiKeyHeader.validateKey({
                     provider: this.llmProvider,
                     key: this.llmApiKey.trim(),
@@ -1568,6 +1606,13 @@ export class ApiKeyHeader extends LitElement {
                 // For other providers, validate API key
                 if (!this.sttApiKey.trim()) {
                     throw new Error('Please enter STT API key');
+                }
+
+                // Save base URL first if provided
+                if (this.sttBaseUrl?.trim()) {
+                    await window.api.apiKeyHeader.saveBaseUrl(this.sttProvider, this.sttBaseUrl.trim());
+                } else {
+                    await window.api.apiKeyHeader.removeBaseUrl(this.sttProvider);
                 }
 
                 sttResult = await window.api.apiKeyHeader.validateKey({
@@ -1982,6 +2027,21 @@ export class ApiKeyHeader extends LitElement {
                                           ?disabled=${this.isLoading}
                                       />
                                       ${this.llmError ? html`<div class="inline-error-message">${this.llmError}</div>` : ''}
+                                      ${this.llmProvider === 'openai' ? html`
+                                          <div class="base-url-wrapper">
+                                              <input
+                                                  type="url"
+                                                  class="base-url-input"
+                                                  placeholder="Custom Base URL (optional)"
+                                                  .value=${this.llmBaseUrl || ''}
+                                                  @input=${e => {
+                                                      this.llmBaseUrl = e.target.value;
+                                                  }}
+                                                  ?disabled=${this.isLoading}
+                                              />
+                                              <div class="helper-text">Leave empty for default OpenAI endpoint</div>
+                                          </div>
+                                      ` : ''}
                                   </div>
                               `}
                     </div>
@@ -2050,6 +2110,21 @@ export class ApiKeyHeader extends LitElement {
                                             ?disabled=${this.isLoading}
                                         />
                                         ${this.sttError ? html`<div class="inline-error-message">${this.sttError}</div>` : ''}
+                                        ${this.sttProvider === 'openai' ? html`
+                                            <div class="base-url-wrapper">
+                                                <input
+                                                    type="url"
+                                                    class="base-url-input"
+                                                    placeholder="Custom Base URL (optional)"
+                                                    .value=${this.sttBaseUrl || ''}
+                                                    @input=${e => {
+                                                        this.sttBaseUrl = e.target.value;
+                                                    }}
+                                                    ?disabled=${this.isLoading}
+                                                />
+                                                <div class="helper-text">Leave empty for default OpenAI endpoint</div>
+                                            </div>
+                                        ` : ''}
                                     </div>
                                 `}
                     </div>

@@ -231,6 +231,39 @@ class ModelStateService extends EventEmitter {
         return { success: true };
     }
 
+    async setBaseUrl(provider, baseUrl) {
+        console.log(`[ModelStateService] setBaseUrl for ${provider}: ${baseUrl}`);
+        if (!provider) {
+            throw new Error('Provider is required');
+        }
+        
+        // Validate base URL format if provided
+        if (baseUrl && baseUrl.trim() !== '') {
+            try {
+                new URL(baseUrl);
+            } catch (error) {
+                return { success: false, error: 'Invalid base URL format' };
+            }
+        }
+        
+        const existingSettings = await providerSettingsRepository.getByProvider(provider) || {};
+        await providerSettingsRepository.upsert(provider, { ...existingSettings, base_url: baseUrl || null });
+        
+        this.emit('state-updated', await this.getLiveState());
+        this.emit('settings-updated');
+        return { success: true };
+    }
+
+    async getBaseUrl(provider) {
+        const settings = await providerSettingsRepository.getByProvider(provider);
+        return settings?.base_url || null;
+    }
+
+    async getAllProviderSettings() {
+        const allSettings = await providerSettingsRepository.getAll();
+        return allSettings;
+    }
+
     async getAllApiKeys() {
         const allSettings = await providerSettingsRepository.getAll();
         const apiKeys = {};
@@ -363,6 +396,7 @@ class ModelStateService extends EventEmitter {
             provider: activeSetting.provider,
             model: model,
             apiKey: activeSetting.api_key,
+            baseUrl: activeSetting.base_url,
         };
     }
 
@@ -377,7 +411,8 @@ class ModelStateService extends EventEmitter {
             return { success: true };
         }
         try {
-            return await ProviderClass.validateApiKey(key);
+            const baseUrl = await this.getBaseUrl(provider);
+            return await ProviderClass.validateApiKey(key, baseUrl);
         } catch (error) {
             return { success: false, error: 'An unexpected error occurred during validation.' };
         }

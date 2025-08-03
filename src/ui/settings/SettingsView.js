@@ -488,6 +488,7 @@ export class SettingsView extends LitElement {
         saving: { type: Boolean, state: true },
         providerConfig: { type: Object, state: true },
         apiKeys: { type: Object, state: true },
+        baseUrls: { type: Object, state: true },
         availableLlmModels: { type: Array, state: true },
         availableSttModels: { type: Array, state: true },
         selectedLlm: { type: String, state: true },
@@ -514,6 +515,7 @@ export class SettingsView extends LitElement {
         this.shortcuts = {};
         this.firebaseUser = null;
         this.apiKeys = { openai: '', gemini: '', anthropic: '', whisper: '' };
+        this.baseUrls = { openai: '' };
         this.providerConfig = {};
         this.isLoading = true;
         this.isContentProtectionOn = true;
@@ -717,18 +719,39 @@ export class SettingsView extends LitElement {
         this.saving = false;
     }
 
+    async handleBaseUrlChange(provider, baseUrl) {
+        this.baseUrls = { ...this.baseUrls, [provider]: baseUrl };
+        // Auto-save base URL when it changes
+        if (baseUrl.trim() === '') {
+            await window.api.settingsView.removeBaseUrl(provider);
+        } else {
+            await window.api.settingsView.saveBaseUrl(provider, baseUrl);
+        }
+    }
+
     async refreshModelData() {
-        const [availableLlm, availableStt, selected, storedKeys] = await Promise.all([
+        const [availableLlm, availableStt, selected, storedKeys, allSettings] = await Promise.all([
             window.api.settingsView.getAvailableModels({ type: 'llm' }),
             window.api.settingsView.getAvailableModels({ type: 'stt' }),
             window.api.settingsView.getSelectedModels(),
-            window.api.settingsView.getAllKeys()
+            window.api.settingsView.getAllKeys(),
+            window.api.settingsView.getAllProviderSettings()
         ]);
         this.availableLlmModels = availableLlm;
         this.availableSttModels = availableStt;
         this.selectedLlm = selected.llm;
         this.selectedStt = selected.stt;
         this.apiKeys = storedKeys;
+        
+        // Load base URLs from provider settings
+        const baseUrls = {};
+        allSettings.forEach(setting => {
+            if (setting.base_url) {
+                baseUrls[setting.provider] = setting.base_url;
+            }
+        });
+        this.baseUrls = baseUrls;
+        
         this.requestUpdate();
     }
     
@@ -1256,6 +1279,17 @@ export class SettingsView extends LitElement {
                                 placeholder=${loggedIn ? "Using Pickle's Key" : `Enter ${config.name} API Key`} 
                                 .value=${this.apiKeys[id] || ''}
                             >
+                            ${id === 'openai' ? html`
+                                <label for="base-url-input-${id}" style="font-size: 10px; color: rgba(255,255,255,0.7); margin-top: 4px;">Custom Base URL (optional)</label>
+                                <input type="url" id="base-url-input-${id}"
+                                    placeholder="https://api.openai.com/v1" 
+                                    .value=${this.baseUrls[id] || ''}
+                                    @input=${(e) => this.handleBaseUrlChange(id, e.target.value)}
+                                >
+                                <div style="font-size: 9px; color: rgba(255,255,255,0.5); margin-top: 2px;">
+                                    Leave empty to use default OpenAI endpoint
+                                </div>
+                            ` : ''}
                             <div class="key-buttons">
                                <button class="settings-button" @click=${() => this.handleSaveKey(id)} >Save</button>
                                <button class="settings-button danger" @click=${() => this.handleClearKey(id)} }>Clear</button>

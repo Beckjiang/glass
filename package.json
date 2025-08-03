@@ -62,6 +62,7 @@
         "@electron/notarize": "^2.5.0",
         "electron": "^30.5.1",
         "electron-builder": "^26.0.12",
+        "electron-forge": "^5.2.4",
         "electron-reloader": "^1.2.3",
         "esbuild": "^0.25.5",
         "prettier": "^3.6.2"

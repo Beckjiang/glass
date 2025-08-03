@@ -51,6 +51,11 @@ contextBridge.exposeInMainWorld('api', {
     setSelectedModel: (data) => ipcRenderer.invoke('model:set-selected-model', data),
     areProvidersConfigured: () => ipcRenderer.invoke('model:are-providers-configured'),
     
+    // Base URL Management
+    saveBaseUrl: (provider, baseUrl) => ipcRenderer.invoke('model:set-base-url', { provider, baseUrl }),
+    getBaseUrl: (provider) => ipcRenderer.invoke('model:get-base-url', { provider }),
+    removeBaseUrl: (provider) => ipcRenderer.invoke('model:remove-base-url', { provider }),
+    
     // Window Management
     getHeaderPosition: () => ipcRenderer.invoke('get-header-position'),
     moveHeaderTo: (x, y) => ipcRenderer.invoke('move-header-to', x, y),
@@ -216,6 +221,12 @@ contextBridge.exposeInMainWorld('api', {
     saveApiKey: (key) => ipcRenderer.invoke('model:save-api-key', key),
     removeApiKey: (provider) => ipcRenderer.invoke('model:remove-api-key', provider),
     setSelectedModel: (data) => ipcRenderer.invoke('model:set-selected-model', data),
+    
+    // Base URL Management
+    saveBaseUrl: (provider, baseUrl) => ipcRenderer.invoke('model:set-base-url', { provider, baseUrl }),
+    getBaseUrl: (provider) => ipcRenderer.invoke('model:get-base-url', { provider }),
+    removeBaseUrl: (provider) => ipcRenderer.invoke('model:remove-base-url', { provider }),
+    getAllProviderSettings: () => ipcRenderer.invoke('model:get-all-provider-settings'),
     
     // Ollama Management
     getOllamaStatus: () => ipcRenderer.invoke('ollama:get-status'),
